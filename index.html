@@ -325,6 +325,21 @@ footer{background:var(--ink3);border-top:1px solid var(--border);padding:60px 40
 .reveal-d2{transition-delay:.2s}
 .reveal-d3{transition-delay:.3s}
 .reveal-d4{transition-delay:.4s}
+
+/* SIGN IN MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,10,15,0.78);backdrop-filter:blur(8px);z-index:900;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal-box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-xl);padding:40px;max-width:380px;width:100%;position:relative;box-shadow:0 40px 120px rgba(0,0,0,.6)}
+.modal-close{position:absolute;top:16px;right:16px;width:28px;height:28px;border-radius:50%;border:1px solid var(--border2);background:none;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .2s;font-family:'Cabinet Grotesk',sans-serif}
+.modal-close:hover{background:var(--glass2);color:var(--text)}
+.modal-box h3{font-size:21px;font-weight:900;letter-spacing:-.6px;margin-bottom:8px}
+.modal-sub{font-size:14px;color:var(--text2);margin-bottom:24px;line-height:1.55;font-weight:400}
+.modal-submit{background:linear-gradient(135deg,var(--violet),#7c6bff);color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Cabinet Grotesk',sans-serif;width:100%;margin-top:14px;transition:all .2s;letter-spacing:-.3px}
+.modal-submit:hover{transform:translateY(-1px);box-shadow:0 8px 32px rgba(79,58,255,.4)}
+.modal-submit:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
+.modal-success{display:none;text-align:center}
+.modal-success.show{display:block}
+.modal-success .success-ring{width:56px;height:56px;font-size:24px;margin:0 auto 16px}
 </style>
 </head>
 <body>
@@ -343,7 +358,7 @@ footer{background:var(--ink3);border-top:1px solid var(--border);padding:60px 40
     <li><a href="#roadmap">Roadmap</a></li>
   </ul>
   <div class="nav-right">
-    <button class="nav-btn-ghost">Sign In</button>
+    <button class="nav-btn-ghost" id="signin-btn" onclick="openSignInModal()">Sign In</button>
     <button class="nav-btn-primary" onclick="scrollToWaitlist()">Join Waitlist</button>
   </div>
 </nav>
@@ -1074,6 +1089,27 @@ footer{background:var(--ink3);border-top:1px solid var(--border);padding:60px 40
   </div>
 </section>
 
+<!-- SIGN IN MODAL -->
+<div class="modal-overlay" id="signin-overlay" onclick="if(event.target===this)closeSignInModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeSignInModal()">✕</button>
+    <div id="signin-form-wrap">
+      <h3>Sign in to CreativeOS</h3>
+      <p class="modal-sub">We'll email you a magic link — no password to remember. You'll also be added to early access.</p>
+      <div class="form-row">
+        <label for="signin-email">Email Address</label>
+        <input type="email" id="signin-email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <button class="modal-submit" id="signin-submit-btn" onclick="handleSignIn()">Send Magic Link →</button>
+    </div>
+    <div class="modal-success" id="signin-success">
+      <div class="success-ring">📩</div>
+      <h3>Check your inbox</h3>
+      <p class="modal-sub" style="margin-bottom:0">We sent a sign-in link to your email. Click it to access your account — it'll work the moment your dashboard is ready too.</p>
+    </div>
+  </div>
+</div>
+
 <!-- FOOTER -->
 <footer>
   <div class="footer-inner">
@@ -1133,6 +1169,15 @@ footer{background:var(--ink3);border-top:1px solid var(--border);padding:60px 40
   </div>
 </footer>
 
+<!-- SUPABASE: replace these two values with your own project's URL and anon key
+     (Settings → API in your Supabase dashboard) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+</script>
+
 <script>
 (function(){
   const el=document.getElementById('db-chart');
@@ -1170,14 +1215,78 @@ document.querySelectorAll('.faq-question').forEach(q=>{
   });
 });
 
-function handleWaitlist(){
+async function handleWaitlist(){
   const name=document.getElementById('wl-name').value.trim();
   const email=document.getElementById('wl-email').value.trim();
+  const creatorType=document.getElementById('wl-type').value;
   if(!name){document.getElementById('wl-name').focus();return;}
   if(!email||!email.includes('@')){document.getElementById('wl-email').focus();return;}
+
+  const btn=document.querySelector('.wl-submit');
+  const originalText=btn.textContent;
+  btn.disabled=true;
+  btn.textContent='Joining...';
+
+  const {error}=await supabase
+    .from('waitlist')
+    .insert([{name,email,creator_type:creatorType}]);
+
+  btn.disabled=false;
+  btn.textContent=originalText;
+
+  if(error){
+    if(error.code==='23505'){
+      alert("Looks like you're already on the list!");
+    }else{
+      console.error(error);
+      alert('Something went wrong — please try again.');
+    }
+    return;
+  }
+
   document.getElementById('wl-form-wrap').style.display='none';
   document.getElementById('wl-success').classList.add('show');
 }
+
+function openSignInModal(){
+  document.getElementById('signin-overlay').classList.add('show');
+}
+
+function closeSignInModal(){
+  document.getElementById('signin-overlay').classList.remove('show');
+  document.getElementById('signin-form-wrap').style.display='block';
+  document.getElementById('signin-success').classList.remove('show');
+  document.getElementById('signin-email').value='';
+}
+
+async function handleSignIn(){
+  const email=document.getElementById('signin-email').value.trim();
+  if(!email||!email.includes('@')){document.getElementById('signin-email').focus();return;}
+
+  const btn=document.getElementById('signin-submit-btn');
+  const originalText=btn.textContent;
+  btn.disabled=true;
+  btn.textContent='Sending...';
+
+  const {error}=await supabase.auth.signInWithOtp({
+    email,
+    options:{emailRedirectTo:window.location.href}
+  });
+
+  btn.disabled=false;
+  btn.textContent=originalText;
+
+  if(error){
+    console.error(error);
+    alert('Something went wrong — please try again.');
+    return;
+  }
+
+  document.getElementById('signin-form-wrap').style.display='none';
+  document.getElementById('signin-success').classList.add('show');
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSignInModal()});
 
 function scrollToWaitlist(){
   document.getElementById('waitlist').scrollIntoView({behavior:'smooth'});
