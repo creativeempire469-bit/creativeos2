@@ -1173,9 +1173,9 @@ footer{background:var(--ink3);border-top:1px solid var(--border);padding:60px 40
      (Settings → API in your Supabase dashboard) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  const SUPABASE_URL = 'https://iollqlzwbziuyspbcgdh.supabase.co/rest/v1/';
+  const SUPABASE_URL = 'https://iollqlzwbziuyspbcgdh.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_8M_SIee2MRTh-hZtnzD2ag_W_V2nBCu';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const creativeosClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 </script>
 
 <script>
@@ -1227,7 +1227,7 @@ async function handleWaitlist(){
   btn.disabled=true;
   btn.textContent='Joining...';
 
-  const {error}=await supabase
+  const {error}=await creativeosClient
     .from('waitlist')
     .insert([{name,email,creator_type:creatorType}]);
 
@@ -1268,7 +1268,7 @@ async function handleSignIn(){
   btn.disabled=true;
   btn.textContent='Sending...';
 
-  const {error}=await supabase.auth.signInWithOtp({
+  const {error}=await creativeosClient.auth.signInWithOtp({
     email,
     options:{emailRedirectTo:window.location.href}
   });
